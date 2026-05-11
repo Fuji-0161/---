@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TETRIS - 文殊の会</title>
+  <link rel="icon" type="image/jpeg" href="../group-icon.JPG">
+  <link rel="apple-touch-icon" href="../group-icon.JPG">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a href="../index.html" class="home-back">← 文殊の会 トップへ戻る</a>
+
+  <div id="app">
+    <header>
+      <h1>TETRIS</h1>
+    </header>
+
+    <main id="game-area">
+      <!-- 左パネル: スコア情報 -->
+      <aside id="panel-left">
+        <div class="panel-block">
+          <div class="label">SCORE</div>
+          <div class="value" id="score">0</div>
+        </div>
+        <div class="panel-block">
+          <div class="label">LEVEL</div>
+          <div class="value" id="level">1</div>
+        </div>
+        <div class="panel-block">
+          <div class="label">LINES</div>
+          <div class="value" id="lines">0</div>
+        </div>
+      </aside>
+
+      <!-- メインゲームボード -->
+      <div id="board-wrapper">
+        <canvas id="board" width="300" height="600"></canvas>
+        <!-- オーバーレイ: スタート・ゲームオーバー -->
+        <div id="overlay" class="overlay active">
+          <div class="overlay-content">
+            <div class="overlay-title" id="overlay-title">TETRIS</div>
+            <div class="overlay-sub" id="overlay-sub">Press ENTER to Start</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右パネル: ネクストピース -->
+      <aside id="panel-right">
+        <div class="panel-block">
+          <div class="label">NEXT</div>
+          <canvas id="next-canvas" width="120" height="120"></canvas>
+        </div>
+        <div class="panel-block controls-info">
+          <div class="label">CONTROLS</div>
+          <div class="control-item"><span class="key">←→</span> Move</div>
+          <div class="control-item"><span class="key">↓</span> Soft Drop</div>
+          <div class="control-item"><span class="key">↑</span> Rotate</div>
+          <div class="control-item"><span class="key">SPC</span> Hard Drop</div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="tetris.js"></script>
+</body>
+</html>
