@@ -46,17 +46,6 @@ function createField() {
   return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 }
 
-function darken(hex, amount = 0.3) {
-  const m = hex.replace('#', '');
-  const r = parseInt(m.slice(0,2), 16);
-  const g = parseInt(m.slice(2,4), 16);
-  const b = parseInt(m.slice(4,6), 16);
-  const dr = Math.max(0, Math.floor(r * (1 - amount)));
-  const dg = Math.max(0, Math.floor(g * (1 - amount)));
-  const db = Math.max(0, Math.floor(b * (1 - amount)));
-  return `rgb(${dr},${dg},${db})`;
-}
-
 function roundedRectPath(ctx, x, y, w, h, r) {
   const rr = Math.min(r, w/2, h/2);
   ctx.beginPath();
@@ -70,43 +59,6 @@ function roundedRectPath(ctx, x, y, w, h, r) {
   ctx.lineTo(x, y + rr);
   ctx.quadraticCurveTo(x, y, x + rr, y);
   ctx.closePath();
-}
-
-/** 角ごとに半径を指定できる角丸矩形パス */
-function roundedRectPathCorners(ctx, x, y, w, h, rTL, rTR, rBR, rBL) {
-  const lim = Math.min(w/2, h/2);
-  const r1 = Math.min(rTL, lim);
-  const r2 = Math.min(rTR, lim);
-  const r3 = Math.min(rBR, lim);
-  const r4 = Math.min(rBL, lim);
-  ctx.beginPath();
-  ctx.moveTo(x + r1, y);
-  ctx.lineTo(x + w - r2, y);
-  if (r2 > 0) ctx.quadraticCurveTo(x + w, y, x + w, y + r2);
-  ctx.lineTo(x + w, y + h - r3);
-  if (r3 > 0) ctx.quadraticCurveTo(x + w, y + h, x + w - r3, y + h);
-  ctx.lineTo(x + r4, y + h);
-  if (r4 > 0) ctx.quadraticCurveTo(x, y + h, x, y + h - r4);
-  ctx.lineTo(x, y + r1);
-  if (r1 > 0) ctx.quadraticCurveTo(x, y, x + r1, y);
-  ctx.closePath();
-}
-
-/** [r,c] のセル配列から高速参照用 Set を作る */
-function buildCellSet(cells) {
-  const s = new Set();
-  for (const [r, c] of cells) s.add(`${r},${c}`);
-  return s;
-}
-
-/** Set 内で (r,c) の上下左右に同一ピースのセルがあるか判定 */
-function neighborsIn(r, c, set) {
-  return {
-    top:    set.has(`${r-1},${c}`),
-    right:  set.has(`${r},${c+1}`),
-    bottom: set.has(`${r+1},${c}`),
-    left:   set.has(`${r},${c-1}`),
-  };
 }
 
 function loadHighScores() {
@@ -639,7 +591,7 @@ class TetrisGame {
       case 'ArrowDown':  e.preventDefault(); this.softDrop(true);     break;
       case 'ArrowUp':    e.preventDefault(); this.rotate();           break;
       case 'Space':      e.preventDefault(); this.hardDrop();         break;
-      case 'KeyC':
+      case 'KeyZ':
       case 'ShiftLeft':
       case 'ShiftRight': e.preventDefault(); this.hold();             break;
     }
@@ -726,48 +678,46 @@ class TetrisGame {
     }
   }
 
-  // ---- 描画（フェルト風） ----
+  // ---- 描画 ----
 
   /**
-   * テトリミノ1マスを描画。各セルは独立した角丸タイルとして描き、
-   * 4方向ベベル（上左=明 / 下右=暗）で立体感を出す。
-   * 連結はせず、隣接セル同士は1pxほどの隙間を残してタイル感を維持。
+   * テトリミノ1マスをパネル風タイルとして描画。
+   * - 各セルは独立タイル（隣接マージ・連結は一切しない）
+   * - 周囲に明確な隙間を確保してタイル感を強調
+   * - フラットな本体 + 細い内側ラインのハイライトでスタイリッシュな2トーン
    */
   drawCell(ctx, x, y, color, size) {
-    const m  = 1;
-    const r  = size * 0.20;
+    const m  = Math.max(2, Math.round(size * 0.08));   // 明確な隙間（小さくても 2px）
+    const r  = Math.max(2, size * 0.14);               // 控えめな角丸
     const ix = x + m,        iy = y + m;
     const iw = size - m * 2, ih = size - m * 2;
 
-    // 本体
+    // 本体（フラット）
     roundedRectPath(ctx, ix, iy, iw, ih, r);
     ctx.fillStyle = color;
     ctx.fill();
 
-    // 4方向ベベル＋中央光沢（外形にクリップ）
+    // 内側のサブトルなトーン差で立体感（外形にクリップ）
     ctx.save();
     roundedRectPath(ctx, ix, iy, iw, ih, r);
     ctx.clip();
 
-    const bevW = Math.max(2.5, size * 0.16);
+    // 上面ハイライト（薄い帯）
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.32)';
+    ctx.fillRect(ix, iy, iw, Math.max(2, ih * 0.18));
 
-    // 上ベベル（明）
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
-    ctx.fillRect(ix, iy, iw, bevW);
-    // 左ベベル（明）
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.30)';
-    ctx.fillRect(ix, iy, bevW, ih);
-    // 下ベベル（暗）
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-    ctx.fillRect(ix, iy + ih - bevW, iw, bevW);
-    // 右ベベル（暗）
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
-    ctx.fillRect(ix + iw - bevW, iy, bevW, ih);
+    // 下面シェード（薄い帯）
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+    ctx.fillRect(ix, iy + ih - Math.max(2, ih * 0.16), iw, Math.max(2, ih * 0.16));
 
-    // 中央上部の薄い光沢
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
-    ctx.fillRect(ix + bevW, iy + bevW, iw - bevW * 2, (ih - bevW * 2) * 0.42);
+    ctx.restore();
 
+    // パネル風の薄いアウトライン
+    ctx.save();
+    roundedRectPath(ctx, ix + 0.5, iy + 0.5, iw - 1, ih - 1, Math.max(1, r - 0.5));
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -797,38 +747,30 @@ class TetrisGame {
       ctx.beginPath(); ctx.moveTo(c*CELL, 0); ctx.lineTo(c*CELL, H); ctx.stroke();
     }
 
-    // フィールド上の固定ブロック：同色の隣接セルを連結
+    // フィールド上の固定ブロック（各セルを独立タイルとして描画）
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const color = this.field[r][c];
         if (!color) continue;
-        const n = {
-          top:    r > 0        && this.field[r-1][c] === color,
-          right:  c < COLS - 1 && this.field[r][c+1] === color,
-          bottom: r < ROWS - 1 && this.field[r+1][c] === color,
-          left:   c > 0        && this.field[r][c-1] === color,
-        };
-        this.drawCell(ctx, c*CELL, r*CELL, color, CELL, n);
+        this.drawCell(ctx, c*CELL, r*CELL, color, CELL);
       }
     }
 
     if (!this.piece) return;
 
-    // ゴースト：ピース内の隣接で連結
-    const ghost    = this.getGhostCells();
-    const ghostSet = buildCellSet(ghost);
+    // ゴースト
+    const ghost = this.getGhostCells();
     ctx.globalAlpha = 0.25;
     for (const [r, c] of ghost) {
-      this.drawCell(ctx, c*CELL, r*CELL, this.piece.color, CELL, neighborsIn(r, c, ghostSet));
+      this.drawCell(ctx, c*CELL, r*CELL, this.piece.color, CELL);
     }
     ctx.globalAlpha = 1.0;
 
-    // 現在のピース：ピース内の隣接で連結
+    // 現在のピース
     const pieceCells = this.piece.absoluteCells();
-    const pieceSet   = buildCellSet(pieceCells);
     for (const [r, c] of pieceCells) {
       if (r < 0) continue;
-      this.drawCell(ctx, c*CELL, r*CELL, this.piece.color, CELL, neighborsIn(r, c, pieceSet));
+      this.drawCell(ctx, c*CELL, r*CELL, this.piece.color, CELL);
     }
   }
 
@@ -847,11 +789,9 @@ class TetrisGame {
     const sx = Math.floor((size-(maxC-minC+1)*NEXT_CELL)/2) - minC*NEXT_CELL;
     const sy = Math.floor((size-(maxR-minR+1)*NEXT_CELL)/2) - minR*NEXT_CELL;
 
-    const cellSet = buildCellSet(cells);
-
     if (dim) ctx.globalAlpha = 0.5;
     for (const [r, c] of cells) {
-      this.drawCell(ctx, sx + c*NEXT_CELL, sy + r*NEXT_CELL, def.color, NEXT_CELL, neighborsIn(r, c, cellSet));
+      this.drawCell(ctx, sx + c*NEXT_CELL, sy + r*NEXT_CELL, def.color, NEXT_CELL);
     }
     ctx.globalAlpha = 1.0;
   }
